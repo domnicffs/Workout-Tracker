@@ -178,7 +178,6 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    cursor: pointer;
     user-select: none;
   }
 
@@ -191,17 +190,42 @@
   .ex-badge {
     font-family: 'DM Mono', monospace;
     font-size: 10px;
-    padding: 3px 8px;
+    padding: 0 8px;
     border-radius: 20px;
     letter-spacing: 1px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
   }
 
   .badge-bw { background: rgba(71,180,255,0.15); color: var(--blue); }
   .badge-vest { background: rgba(255,107,53,0.15); color: var(--accent2); }
   .badge-dumbbell { background: rgba(232,255,71,0.15); color: var(--accent); }
 
-  .ex-toggle { color: var(--muted); font-size: 18px; transition: transform 0.2s; }
-  .ex-toggle.open { transform: rotate(180deg); }
+  /* Drag handle */
+  .drag-handle {
+    color: var(--muted2);
+    cursor: grab;
+    padding: 4px 8px 4px 2px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    transition: color 0.15s;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .drag-handle:hover { color: var(--muted); }
+
+  .exercise-card.drag-over {
+    border-color: var(--accent);
+    background: rgba(232,255,71,0.04);
+  }
+
+  .exercise-card.dragging {
+    opacity: 0.4;
+  }
 
   .ex-body { border-top: 1px solid var(--border); padding: 12px 14px; }
 
@@ -859,8 +883,15 @@
     border: none;
     color: var(--muted2);
     cursor: pointer;
-    padding: 4px 8px;
-    font-size: 14px;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     transition: color 0.15s;
   }
 
@@ -1577,12 +1608,14 @@ function renderExerciseCard(ex, ei) {
       + '</div>';
   }).join('');
 
-  return '<div class="exercise-card" id="excard-' + ei + '">'
-    + '<div class="ex-header" onclick="toggleExCard(' + ei + ')">'
-    + '<div class="ex-name">' + ex.name + '</div>'
+  return '<div class="exercise-card" id="excard-' + ei + '" draggable="true" data-ei="' + ei + '" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondrop="dragDrop(event)" ondragend="dragEnd(event)" ondragleave="dragLeave(event)">'
+    + '<div class="ex-header">'
+    + '<div class="drag-handle" onclick="toggleExCard(' + ei + ')" title="Drag to reorder / tap to expand">'
+    + '<svg width="16" height="14" viewBox="0 0 16 14" fill="none"><rect x="0" y="0" width="16" height="2" rx="1" fill="currentColor"/><rect x="0" y="6" width="16" height="2" rx="1" fill="currentColor"/><rect x="0" y="12" width="16" height="2" rx="1" fill="currentColor"/></svg>'
+    + '</div>'
+    + '<div class="ex-name" onclick="toggleExCard(' + ei + ')" style="flex:1;cursor:pointer">' + ex.name + '</div>'
     + '<span class="ex-badge" style="background:var(--surface2);color:var(--muted);font-family:\'DM Mono\',monospace;font-size:10px">' + sets.length + ' SET' + (sets.length !== 1 ? 'S' : '') + '</span>'
-    + '<button class="delete-ex-btn" onclick="event.stopPropagation();deleteExercise(' + ei + ')">🗑</button>'
-    + '<span class="ex-toggle ' + (ex._open ? 'open' : '') + '">⌄</span>'
+    + '<button class="delete-ex-btn" onclick="event.stopPropagation();deleteExercise(' + ei + ')">✕</button>'
     + '</div>'
     + '<div class="ex-body" style="' + (ex._open ? '' : 'display:none') + '">'
     + setsHtml
@@ -2111,10 +2144,10 @@ function renderDayDetailPanel(day, dayData) {
   const exBlocks = (dayData.exercises || []).map(function(ex) {
     const sets = (ex.sets || []).map(function(s, si) {
       const type = s.type || 'bw';
-      const weightStr = type === 'vest' ? (s.kg || 0) + 'kg vest'
-                      : type === 'dumbbell' ? (s.kg || 0) + 'kg dumbbells'
-                      : type === 'combo' ? (s.vestKg || 0) + 'kg vest + ' + (s.dbKg || 0) + 'kg dumbbells'
-                      : 'bodyweight';
+      const weightStr = type === 'vest' ? (s.kg || 0) + 'kg Vest'
+                      : type === 'dumbbell' ? (s.kg || 0) + 'kg Dumbbells'
+                      : type === 'combo' ? (s.vestKg || 0) + 'kg Vest + ' + (s.dbKg || 0) + 'kg Dumbbells'
+                      : 'Bodyweight';
       return '<div class="day-detail-set">SET ' + (si + 1) + ' · <span>' + (s.reps || '—') + ' reps</span> · ' + weightStr + '</div>';
     }).join('');
     return '<div class="day-detail-ex"><div class="day-detail-ex-name">' + ex.name + '</div>' + sets + '</div>';
@@ -2360,9 +2393,9 @@ function renderSessionPage() {
       const ei = exercises.indexOf(ex);
       const doneSets = (ex.sets||[]).filter(function(_, si) { return session.setsDone[ei+'-'+si]; });
       const setLines = doneSets.map(function(s, si) {
-        const tl = s.type==='vest' ? (s.kg||0)+'kg vest'
-                 : s.type==='dumbbell' ? (s.kg||0)+'kg dumbbells'
-                 : s.type==='combo' ? (s.vestKg||0)+'kg vest + '+(s.dbKg||0)+'kg dumbbells = '+((parseFloat(s.vestKg)||0)+(parseFloat(s.dbKg)||0))+'kg'
+        const tl = s.type==='vest' ? (s.kg||0)+'kg Vest'
+                 : s.type==='dumbbell' ? (s.kg||0)+'kg Dumbbells'
+                 : s.type==='combo' ? (s.vestKg||0)+'kg Vest + '+(s.dbKg||0)+'kg Dumbbells = '+((parseFloat(s.vestKg)||0)+(parseFloat(s.dbKg)||0))+'kg'
                  : 'Bodyweight';
         return '<div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted);padding:3px 0">SET '+(si+1)+' · '+(s.reps||'—')+' REPS · '+tl+'</div>';
       }).join('');
@@ -2406,7 +2439,7 @@ function renderSessionPage() {
     const nextSetIdx = sets.findIndex(function(_,si){ return !session.setsDone[currentEx+'-'+si]; });
     if (nextSetIdx >= 0) {
       const s = sets[nextSetIdx];
-      const tl = s.type==='vest'?(s.kg||0)+'kg vest':s.type==='dumbbell'?(s.kg||0)+'kg dumbbells':s.type==='combo'?(s.vestKg||0)+'kg vest + '+(s.dbKg||0)+'kg dumbbells':'BW';
+      const tl = s.type==='vest'?(s.kg||0)+'kg Vest':s.type==='dumbbell'?(s.kg||0)+'kg Dumbbells':s.type==='combo'?(s.vestKg||0)+'kg Vest + '+(s.dbKg||0)+'kg Dumbbells':' Bodyweight';
       nextInfo = 'SET '+(nextSetIdx+1)+' · '+(s.reps||'—')+' REPS · '+tl;
     }
   }
@@ -2438,7 +2471,7 @@ function renderSessionPage() {
     if (isCurrent || allDone) {
       const setRows = sets.map(function(s, si) {
         const done = !!session.setsDone[ei+'-'+si];
-        const tl = s.type==='vest'?(s.kg||0)+'kg vest':s.type==='dumbbell'?(s.kg||0)+'kg dumbbells':s.type==='combo'?(s.vestKg||0)+'kg vest + '+(s.dbKg||0)+'kg dumbbells = '+((parseFloat(s.vestKg)||0)+(parseFloat(s.dbKg)||0))+'kg':'BW';
+        const tl = s.type==='vest'?(s.kg||0)+'kg Vest':s.type==='dumbbell'?(s.kg||0)+'kg Dumbbells':s.type==='combo'?(s.vestKg||0)+'kg Vest + '+(s.dbKg||0)+'kg Dumbbells = '+((parseFloat(s.vestKg)||0)+(parseFloat(s.dbKg)||0))+'kg':' Bodyweight';
         const repsLabel = s.reps ? '<span>'+s.reps+' reps</span>' : '<span>— reps</span>';
         return '<div class="live-set-row">'
           + '<div class="live-set-num">'+(si+1)+'</div>'
@@ -2689,6 +2722,48 @@ function resetSession() {
   const prev = session.restDuration;
   session = { active:false, startTs:null, elapsedTimer:null, restTimer:null, restDuration:prev, restRemaining:0, pendingRestDuration:null, setsDone:{}, complete:false, customRestInput:false, workoutNameAtStart:'' };
   renderSessionPage();
+}
+
+// ─── DRAG TO REORDER ─────────────────────────────────────────────────────────
+let dragSrcIdx = null;
+
+function dragStart(e) {
+  dragSrcIdx = parseInt(e.currentTarget.dataset.ei);
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragSrcIdx);
+}
+
+function dragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const card = e.currentTarget;
+  document.querySelectorAll('.exercise-card').forEach(function(c) { c.classList.remove('drag-over'); });
+  if (parseInt(card.dataset.ei) !== dragSrcIdx) card.classList.add('drag-over');
+}
+
+function dragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function dragDrop(e) {
+  e.preventDefault();
+  const targetIdx = parseInt(e.currentTarget.dataset.ei);
+  if (dragSrcIdx === null || targetIdx === dragSrcIdx) return;
+  const dayData = getDayData();
+  const exs = dayData.exercises;
+  const moved = exs.splice(dragSrcIdx, 1)[0];
+  exs.splice(targetIdx, 0, moved);
+  save();
+  renderDayContent();
+}
+
+function dragEnd(e) {
+  dragSrcIdx = null;
+  document.querySelectorAll('.exercise-card').forEach(function(c) {
+    c.classList.remove('dragging');
+    c.classList.remove('drag-over');
+  });
 }
 
 // ─── PAGE SWITCHING ───────────────────────────────────────────────────────────
