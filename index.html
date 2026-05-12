@@ -39,7 +39,9 @@
     overflow-x: hidden;
   }
 
-  /* Noise overlay */
+  /* Hide main header on session page */
+  body.session-active .header { display: none; }
+  body.session-active #page-session { padding-top: 20px; }
   body::before {
     content: '';
     position: fixed;
@@ -1214,6 +1216,9 @@
     display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
     padding: 14px 16px; background: var(--surface);
     border: 1px solid var(--border); border-radius: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 99;
   }
   .session-elapsed-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1.5px; }
   .session-elapsed { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 2px; color: var(--accent); line-height: 1; }
@@ -1225,7 +1230,7 @@
   }
   .session-end-btn:hover { background: rgba(255,68,68,0.1); }
   .rest-timer-bar {
-    display: none; position: sticky; top: 73px; z-index: 50;
+    display: none; position: sticky; top: 90px; z-index: 50;
     background: var(--surface2); border: 1px solid var(--border);
     border-radius: 14px; padding: 14px 18px; margin-bottom: 14px;
     align-items: center; gap: 14px;
@@ -2772,6 +2777,7 @@ function switchPage(name, btn) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   btn.classList.add('active');
+  document.body.classList.toggle('session-active', name === 'session');
 
   if (name === 'stats') renderStats();
   if (name === 'progress') renderProgress();
