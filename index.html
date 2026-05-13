@@ -120,7 +120,6 @@
   .page { display: none; padding: 20px; }
   .page.active { display: block; }
 
-  /* Week strip */
   .week-strip {
     display: flex;
     gap: 6px;
@@ -732,7 +731,8 @@
 
   .cal-cell.worked { cursor: pointer; }
   .cal-cell.worked:hover { border-color: var(--accent); background: rgba(232,255,71,0.18); }
-  .cal-cell.selected { border-color: var(--accent) !important; background: rgba(232,255,71,0.22) !important; box-shadow: 0 0 0 1px var(--accent); }
+  .cal-cell.selected { border-color: var(--accent) !important; background: rgba(232,255,71,0.22) !important; box-shadow: 0 0 0 1px var(--accent); color: var(--accent); }
+  .cal-cell.worked.selected { color: #000; background: var(--accent) !important; }
 
   /* Day detail panel */
   .day-detail-panel {
@@ -1338,7 +1338,7 @@
 
       <button class="add-ex-btn" onclick="openAddExercise()">+ ADD EXERCISE</button>
     </div>
-  </div>
+  </div><!-- end page-log -->
 
   <!-- STATS PAGE -->
   <div class="page" id="page-stats">
@@ -2095,19 +2095,16 @@ function renderCalendar(workedDays, workedDaysData) {
   for (let d = 1; d <= total; d++) {
     const isToday = today.getDate() === d && today.getMonth() === currentMonth && today.getFullYear() === currentYear;
     const worked = workedDays.has(d);
-    const isSelected = selectedCalDay === d && worked;
-    const clickAttr = worked ? ' onclick="showDayDetail(' + d + ')" style="cursor:pointer"' : '';
-    html += '<div class="cal-cell ' + (worked ? 'worked' : '') + ' ' + (isToday ? 'today' : '') + ' ' + (isSelected ? 'selected' : '') + '"' + clickAttr + '>' + d + '</div>';
+    const isSelected = selectedCalDay === d;
+    // All days clickable
+    html += '<div class="cal-cell ' + (worked ? 'worked' : '') + ' ' + (isToday ? 'today' : '') + ' ' + (isSelected ? 'selected' : '') + '" onclick="showDayDetail(' + d + ')" style="cursor:pointer">' + d + '</div>';
   }
 
   cal.innerHTML = html;
-
-  // Store data for click access
   cal._workedDaysData = workedDaysData;
 
-  // Re-render detail if a day is selected
-  if (selectedCalDay && workedDaysData[selectedCalDay]) {
-    renderDayDetailPanel(selectedCalDay, workedDaysData[selectedCalDay]);
+  if (selectedCalDay) {
+    renderDayDetailPanel(selectedCalDay, workedDaysData[selectedCalDay] || null);
   } else {
     document.getElementById('dayDetailPanel').innerHTML = '';
   }
@@ -2116,26 +2113,23 @@ function renderCalendar(workedDays, workedDaysData) {
 function showDayDetail(day) {
   const cal = document.getElementById('calGrid');
   const workedDaysData = cal._workedDaysData || {};
-  if (!workedDaysData[day]) return;
 
   // Toggle off if same day tapped again
   if (selectedCalDay === day) {
     selectedCalDay = null;
     document.getElementById('dayDetailPanel').innerHTML = '';
-    // remove selected highlight
     cal.querySelectorAll('.cal-cell.selected').forEach(function(c) { c.classList.remove('selected'); });
     return;
   }
 
   selectedCalDay = day;
 
-  // Update highlights
   cal.querySelectorAll('.cal-cell').forEach(function(c) { c.classList.remove('selected'); });
   cal.querySelectorAll('.cal-cell').forEach(function(c) {
-    if (parseInt(c.textContent) === day && c.classList.contains('worked')) c.classList.add('selected');
+    if (parseInt(c.textContent) === day) c.classList.add('selected');
   });
 
-  renderDayDetailPanel(day, workedDaysData[day]);
+  renderDayDetailPanel(day, workedDaysData[day] || null);
 }
 
 function renderDayDetailPanel(day, dayData) {
@@ -2143,10 +2137,13 @@ function renderDayDetailPanel(day, dayData) {
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const dateStr = day + ' ' + monthNames[currentMonth] + ' ' + currentYear;
 
-  // Store dayData on window for save function to access
   window._detailDayData = dayData;
+  window._detailDay = day;
 
-  const exBlocks = (dayData.exercises || []).map(function(ex) {
+  const hasName = dayData && dayData.workoutName && dayData.workoutName.trim();
+  const hasExercises = dayData && dayData.exercises && dayData.exercises.length > 0;
+
+  const exBlocks = hasExercises ? (dayData.exercises || []).map(function(ex) {
     const sets = (ex.sets || []).map(function(s, si) {
       const type = s.type || 'bw';
       const weightStr = type === 'vest' ? (s.kg || 0) + 'kg Vest'
@@ -2156,22 +2153,79 @@ function renderDayDetailPanel(day, dayData) {
       return '<div class="day-detail-set">SET ' + (si + 1) + ' · <span>' + (s.reps || '—') + ' reps</span> · ' + weightStr + '</div>';
     }).join('');
     return '<div class="day-detail-ex"><div class="day-detail-ex-name">' + ex.name + '</div>' + sets + '</div>';
-  }).join('');
+  }).join('') : '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted);padding:10px 0;letter-spacing:1px">NO WORKOUT LOGGED · LOAD A TEMPLATE BELOW</div>';
 
-  const hasName = dayData.workoutName && dayData.workoutName.trim();
+  const actionBtns = '<div style="display:flex;gap:8px;align-items:center">'
+    + (hasExercises ? '<button class="save-name-btn" onclick="saveFromDayDetail()" style="font-size:9px;padding:5px 10px" title="Save as template">SAVE TEMPLATE</button>' : '')
+    + '<button class="save-name-btn" onclick="toggleDetailLoadDropdown()" style="font-size:9px;padding:5px 10px;border-color:var(--blue);color:var(--blue)" title="Load template">LOAD TEMPLATE</button>'
+    + '<button class="day-detail-close" onclick="showDayDetail(' + day + ')">✕</button>'
+    + '</div>';
 
   panel.innerHTML = '<div class="day-detail-panel">'
     + '<div class="day-detail-header">'
     + '<div><div class="day-detail-date">' + dateStr + '</div>'
     + (hasName ? '<div class="day-detail-name">' + dayData.workoutName.toUpperCase() + '</div>' : '')
     + '</div>'
-    + '<div style="display:flex;gap:8px;align-items:center">'
-    + '<button class="save-name-btn" onclick="saveFromDayDetail()" style="font-size:9px;padding:5px 10px" title="Save as template">SAVE TEMPLATE</button>'
-    + '<button class="day-detail-close" onclick="showDayDetail(' + day + ')">✕</button>'
+    + actionBtns
     + '</div>'
-    + '</div>'
+    + '<div id="detailLoadDropdown" style="display:none;margin-bottom:12px"></div>'
     + exBlocks
     + '</div>';
+}
+
+function toggleDetailLoadDropdown() {
+  const dd = document.getElementById('detailLoadDropdown');
+  if (!dd) return;
+  if (dd.style.display !== 'none') { dd.style.display = 'none'; return; }
+
+  savedTemplates = JSON.parse(localStorage.getItem('forge_templates') || '[]');
+  if (savedTemplates.length === 0) {
+    dd.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted);padding:8px 0;letter-spacing:1px">NO SAVED TEMPLATES</div>';
+  } else {
+    dd.innerHTML = savedTemplates.map(function(tpl, idx) {
+      const exCount = (tpl.exercises || []).length;
+      return '<div class="saved-name-item" onclick="loadTemplateIntoPastDay(' + idx + ')" style="border-radius:8px;margin-bottom:4px;background:var(--surface2);border:1px solid var(--border)">'
+        + '<div style="flex:1">'
+        + '<div class="saved-name-text">' + tpl.name + '</div>'
+        + '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--muted);margin-top:2px">' + exCount + ' EXERCISE' + (exCount !== 1 ? 'S' : '') + '</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
+  dd.style.display = 'block';
+}
+
+function loadTemplateIntoPastDay(tplIdx) {
+  const tpl = savedTemplates[tplIdx];
+  if (!tpl) return;
+
+  const day = window._detailDay;
+  // Find which week key this day belongs to
+  const targetDate = new Date(currentYear, currentMonth, day);
+  const dow = (targetDate.getDay() + 6) % 7; // 0=Mon
+  const monday = new Date(targetDate);
+  monday.setDate(targetDate.getDate() - dow);
+  const wkKey = monday.toISOString().slice(0, 10);
+
+  if (!data[wkKey]) data[wkKey] = {};
+  if (!data[wkKey][dow]) data[wkKey][dow] = {};
+
+  data[wkKey][dow].workoutName = tpl.name;
+  data[wkKey][dow].exercises = tpl.exercises.map(function(ex, i) {
+    return {
+      name: ex.name,
+      _open: i === 0,
+      sets: (ex.sets || []).map(function(s) {
+        return { reps: s.reps, type: s.type || 'bw', kg: s.kg || '', vestKg: s.vestKg || '', dbKg: s.dbKg || '' };
+      })
+    };
+  });
+  data[wkKey][dow].isRest = false;
+  save();
+
+  // Refresh the progress view
+  selectedCalDay = day;
+  renderProgress();
 }
 
 function saveFromDayDetail() {
