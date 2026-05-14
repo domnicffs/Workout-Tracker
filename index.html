@@ -358,6 +358,68 @@
     letter-spacing: 1px;
   }
 
+  /* Reps / Time toggle */
+  .set-mode-row {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 7px;
+  }
+
+  .set-mode-pill {
+    flex: 1;
+    padding: 5px 4px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-align: center;
+    transition: all 0.12s;
+  }
+
+  .set-mode-pill.active-reps { border-color: var(--accent); color: var(--accent); background: rgba(232,255,71,0.1); }
+  .set-mode-pill.active-time { border-color: #b47fff; color: #b47fff; background: rgba(180,127,255,0.1); }
+
+  /* Time input row */
+  .set-time-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 7px;
+  }
+
+  .set-time-input {
+    flex: 1;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    text-align: center;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  .set-time-input:focus { border-color: #b47fff; }
+
+  .set-time-sep {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--muted);
+  }
+
+  .set-time-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
   .add-set-btn {
     background: none;
     border: 1px dashed var(--border);
@@ -985,6 +1047,68 @@
 
   .suggestion-item:last-child { border-bottom: none; }
   .suggestion-item:hover { background: var(--surface3); }
+
+  /* Rest done alert overlay */
+  .rest-alert-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: rgba(0,0,0,0.88);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    backdrop-filter: blur(6px);
+  }
+  .rest-alert-overlay.open { display: flex; }
+
+  .rest-alert-emoji {
+    font-size: 64px;
+    margin-bottom: 16px;
+    animation: pulse 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.12); }
+  }
+
+  .rest-alert-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+
+  .rest-alert-msg {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    color: var(--text);
+    text-align: center;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    opacity: 0.8;
+    max-width: 280px;
+  }
+
+  .rest-alert-btn {
+    padding: 16px 40px;
+    background: var(--accent);
+    border: none;
+    border-radius: 14px;
+    color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s;
+    box-shadow: 0 0 30px rgba(232,255,71,0.3);
+  }
+  .rest-alert-btn:active { transform: scale(0.96); }
 
   /* Workout name input on LOG page */
   .workout-name-input {
@@ -1616,12 +1740,37 @@ function renderExerciseCard(ex, ei) {
         + '</div>';
     }
 
+    const mode = s.mode || 'reps'; // 'reps' or 'time'
+    const timeMin = s.timeMin || '';
+    const timeSec = s.timeSec || '';
+
+    // Mode toggle
+    const modeToggle = '<div class="set-mode-row">'
+      + '<button class="set-mode-pill ' + (mode === 'reps' ? 'active-reps' : '') + '" onclick="setSetMode(' + ei + ',' + si + ',\'reps\')">REPS</button>'
+      + '<button class="set-mode-pill ' + (mode === 'time' ? 'active-time' : '') + '" onclick="setSetMode(' + ei + ',' + si + ',\'time\')">TIME</button>'
+      + '</div>';
+
+    // Input area: reps or time
+    const inputArea = mode === 'time'
+      ? '<div class="set-time-row">'
+        + '<span class="set-time-label">MIN</span>'
+        + '<input class="set-time-input" type="number" inputmode="numeric" min="0" max="59" value="' + timeMin + '" placeholder="0" onchange="updateSet(' + ei + ',' + si + ',\'timeMin\',this.value)">'
+        + '<span class="set-time-sep">:</span>'
+        + '<span class="set-time-label">SEC</span>'
+        + '<input class="set-time-input" type="number" inputmode="numeric" min="0" max="59" value="' + timeSec + '" placeholder="0" onchange="updateSet(' + ei + ',' + si + ',\'timeSec\',this.value)">'
+        + '</div>'
+      : '';
+
     return '<div class="set-row">'
       + '<div class="set-row-top">'
       + '<div class="set-num">' + (si + 1) + '</div>'
-      + '<input class="set-input" type="number" inputmode="numeric" min="0" value="' + (s.reps || '') + '" placeholder="reps" onchange="updateSet(' + ei + ',' + si + ',\'reps\',this.value)">'
+      + (mode === 'reps'
+        ? '<input class="set-input" type="number" inputmode="numeric" min="0" value="' + (s.reps || '') + '" placeholder="reps" onchange="updateSet(' + ei + ',' + si + ',\'reps\',this.value)">'
+        : '<div class="set-input" style="display:flex;align-items:center;justify-content:center;gap:4px;font-family:\'DM Mono\',monospace;color:' + (timeMin || timeSec ? 'var(--text)' : 'var(--muted2)') + ';font-size:13px">' + (timeMin || timeSec ? (timeMin||'0') + 'm ' + (timeSec||'0') + 's' : 'set time below') + '</div>')
       + '<button class="set-del" onclick="deleteSet(' + ei + ',' + si + ')">×</button>'
       + '</div>'
+      + modeToggle
+      + inputArea
       + '<div class="set-wt-row">'
       + '<button class="set-wt-pill ' + (type === 'bw' ? 'sel-bw' : '') + '" onclick="setSetType(' + ei + ',' + si + ',\'bw\')">BODYWEIGHT</button>'
       + '<button class="set-wt-pill ' + (type === 'vest' || type === 'combo' ? 'sel-vest' : '') + '" onclick="setSetType(' + ei + ',' + si + ',\'vest\')">VEST</button>'
@@ -1690,15 +1839,25 @@ function deleteSet(ei, si) {
   });
 }
 
+function setSetMode(ei, si, mode) {
+  const dayData = getDayData();
+  dayData.exercises[ei].sets[si].mode = mode;
+  save();
+  renderDayContent();
+}
+
 function addSet(ei) {
   const dayData = getDayData();
   const ex = dayData.exercises[ei];
   if (!ex.sets) ex.sets = [];
   const last = ex.sets[ex.sets.length - 1];
   ex.sets.push({
-    reps: last ? last.reps : '',
+    reps: '',
     type: last ? (last.type || 'bw') : 'bw',
-    kg: last ? (last.kg || '') : ''
+    kg: last ? (last.kg || '') : '',
+    mode: last ? (last.mode || 'reps') : 'reps',
+    timeMin: '',
+    timeSec: ''
   });
   save();
   renderDayContent();
@@ -1778,47 +1937,39 @@ function openSavedNames() {
 }
 const DEFAULT_TEMPLATES = [
   {
-    name: 'Weighted Legs',
+    name: 'Chest & Triceps',
     exercises: [
-      { name: 'Squats',                sets: [{ reps: 15, type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
-      { name: 'One Legged Calf Raises',sets: [{ reps: 10, type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
-      { name: 'Lunges',                sets: [{ reps: 20, type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
-      { name: 'Calf Raises',           sets: [{ reps: 20, type: 'dumbbell', kg: '20', vestKg: '', dbKg: '' }] },
-      { name: 'Stiff Leg',             sets: [{ reps: '',  type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] }
+      { name: 'Push-Ups',            sets: [{ reps: 15, mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Decline Push-Ups',    sets: [{ reps: 15, mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Mid Incline Push-Ups',sets: [{ reps: 15, mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Incline Push-Ups',    sets: [{ reps: 15, mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Dips',                sets: [{ reps: 10, mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Tricep Extensions',   sets: [{ reps: 15, mode: 'reps', type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
+      { name: 'Tricep Kickbacks',    sets: [{ reps: 15, mode: 'reps', type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] }
     ]
   },
   {
     name: 'Back & Biceps',
     exercises: [
-      { name: 'Wide Pull-Ups',   sets: [{ reps: 5,  type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Pull-Ups',        sets: [{ reps: 5,  type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Narrow Pull-Ups', sets: [{ reps: 5,  type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Chin-Ups',        sets: [{ reps: 5,  type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Inverted Rows',   sets: [{ reps: 10, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Bicep Curls',     sets: [{ reps: 10, type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
-      { name: 'Hammer Curls',    sets: [{ reps: 10, type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] }
+      { name: 'Wide Pull-Ups',        sets: [{ reps: 5,  mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Pull-Ups',             sets: [{ reps: 5,  mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Narrow Pull-Ups',      sets: [{ reps: 5,  mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Chin-Ups',             sets: [{ reps: 5,  mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Inverted Rows',        sets: [{ reps: 10, mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Bicep Curls',          sets: [{ reps: 10, mode: 'reps', type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
+      { name: 'Hammer Curls',         sets: [{ reps: 10, mode: 'reps', type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] }
     ]
   },
   {
-    name: 'Legs',
+    name: 'Legs & Abs',
     exercises: [
-      { name: 'Squats',                sets: [{ reps: 30, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'One Legged Calf Raises',sets: [{ reps: 20, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Lunges',                sets: [{ reps: 30, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Calf Raises',           sets: [{ reps: 30, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Stiff Leg',             sets: [{ reps: 20, type: 'bw', kg: '', vestKg: '', dbKg: '' }] }
-    ]
-  },
-  {
-    name: 'Chest and Triceps',
-    exercises: [
-      { name: 'Push-Ups',           sets: [{ reps: 15, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Decline Push-Ups',   sets: [{ reps: 15, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Mid Incline Push-Ups',sets: [{ reps: 15, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Incline Push-Ups',   sets: [{ reps: 15, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Dips',               sets: [{ reps: 10, type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
-      { name: 'Tricep Extensions',  sets: [{ reps: 10, type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
-      { name: 'Tricep Kickbacks',   sets: [{ reps: 10, type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] }
+      { name: 'Squats',                 sets: [{ reps: 20, mode: 'reps', type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
+      { name: 'One Legged Calf Raises', sets: [{ reps: 15, mode: 'reps', type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
+      { name: 'Lunges',                 sets: [{ reps: 20, mode: 'reps', type: 'dumbbell', kg: '10', vestKg: '', dbKg: '' }] },
+      { name: 'Calf Raises',            sets: [{ reps: 20, mode: 'reps', type: 'dumbbell', kg: '20', vestKg: '', dbKg: '' }] },
+      { name: 'Stiff Leg',              sets: [{ reps: 15, mode: 'reps', type: 'dumbbell', kg: '20', vestKg: '', dbKg: '' }] },
+      { name: 'Leg Raises',             sets: [{ reps: 20, mode: 'reps', type: 'bw', kg: '', vestKg: '', dbKg: '' }] },
+      { name: 'Plank',                  sets: [{ reps: '', mode: 'time', timeMin: '0', timeSec: '60', type: 'bw', kg: '', vestKg: '', dbKg: '' }] }
     ]
   }
 ];
@@ -2169,7 +2320,7 @@ function renderDayDetailPanel(day, dayData) {
                       : type === 'dumbbell' ? (s.kg || 0) + 'kg Dumbbells'
                       : type === 'combo' ? (s.vestKg || 0) + 'kg Vest + ' + (s.dbKg || 0) + 'kg Dumbbells'
                       : 'Bodyweight';
-      return '<div class="day-detail-set">SET ' + (si + 1) + ' · <span>' + (s.reps || '—') + ' reps</span> · ' + weightStr + '</div>';
+      return '<div class="day-detail-set">SET ' + (si + 1) + ' · <span>' + setRepLabel(s) + '</span> · ' + weightStr + '</div>';
     }).join('');
     return '<div class="day-detail-ex"><div class="day-detail-ex-name">' + ex.name + '</div>' + sets + '</div>';
   }).join('') : '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted);padding:10px 0;letter-spacing:1px">NO WORKOUT LOGGED · LOAD A TEMPLATE BELOW</div>';
@@ -2346,6 +2497,120 @@ function changeMonth(dir) {
   renderProgress();
 }
 
+// ─── SET TIMER (timed exercises) ─────────────────────────────────────────────
+function startSetTimer(ei, si) {
+  if (session.activeSetTimer) cancelSetTimer();
+  const dayData = getDayData();
+  const s = dayData.exercises[ei].sets[si];
+  const totalSecs = ((parseInt(s.timeMin) || 0) * 60) + (parseInt(s.timeSec) || 0);
+  if (totalSecs <= 0) { markSetDone(ei, si); return; }
+
+  session.activeSetTimer = {
+    key: ei + '-' + si,
+    ei: ei, si: si,
+    phase: 'prep',   // 5s get-ready countdown
+    remaining: 5,
+    total: totalSecs,
+    interval: null
+  };
+
+  function tick() {
+    const t = session.activeSetTimer;
+    if (!t) return;
+    t.remaining--;
+
+    // Update display in-place
+    var el = document.getElementById('setTimerDisplay');
+    if (el) {
+      if (t.phase === 'prep') {
+        el.innerHTML = '<span style="color:var(--accent);font-family:\'Bebas Neue\',sans-serif;font-size:22px;letter-spacing:2px">' + t.remaining + '</span>';
+      } else {
+        var m = Math.floor(t.remaining / 60);
+        var sec = t.remaining % 60;
+        el.innerHTML = '<span style="color:#b47fff;font-family:\'Bebas Neue\',sans-serif;font-size:22px;letter-spacing:2px">' + m + ':' + (sec < 10 ? '0' : '') + sec + '</span>';
+      }
+    }
+    updateElapsedDisplay();
+
+    if (t.remaining <= 0) {
+      if (t.phase === 'prep') {
+        // Switch to main timer
+        t.phase = 'work';
+        t.remaining = t.total;
+        playTimerStartBeep();
+      } else {
+        // Timer done — auto mark done
+        clearInterval(t.interval);
+        session.activeSetTimer = null;
+        markSetDone(t.ei, t.si);
+      }
+    }
+  }
+
+  session.activeSetTimer.interval = setInterval(tick, 1000);
+  renderSessionPage();
+}
+
+function cancelSetTimer() {
+  if (session.activeSetTimer) {
+    clearInterval(session.activeSetTimer.interval);
+    session.activeSetTimer = null;
+    renderSessionPage();
+  }
+}
+
+function playTimerStartBeep() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 660;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+}
+
+function playVictorySound() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Rising fanfare: C E G C (major chord arpeggio up)
+    var notes = [523, 659, 784, 1047, 1319];
+    notes.forEach(function(freq, i) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      var t = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.05);
+      gain.gain.linearRampToValueAtTime(0.2, t + 0.25);
+      gain.gain.linearRampToValueAtTime(0, t + 0.5);
+      osc.start(t);
+      osc.stop(t + 0.55);
+    });
+    // Sustained chord underneath
+    [523, 659, 784].forEach(function(freq) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      var t = ctx.currentTime + 0.8;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.15, t + 0.1);
+      gain.gain.linearRampToValueAtTime(0.15, t + 1.2);
+      gain.gain.linearRampToValueAtTime(0, t + 1.8);
+      osc.start(t);
+      osc.stop(t + 1.9);
+    });
+  } catch(e) {}
+}
+
 // ─── SESSION STATE ────────────────────────────────────────────────────────────
 let session = {
   active: false,
@@ -2359,6 +2624,7 @@ let session = {
   complete: false,
   customRestInput: false,
   workoutNameAtStart: '',
+  activeSetTimer: null,
 };
 
 // saved session history: array of { date, workoutName, exercises:[{name, sets:[{reps,type,kg,vestKg,dbKg}]}], duration, ts }
@@ -2385,23 +2651,102 @@ function saveSessionHistory(exercises, elapsed) {
 }
 
 // Web Audio beep on rest end
+const REST_MESSAGES = [
+  { emoji: '⚔️',  title: 'BACK INTO IT',     msg: "The warzone is waiting. Step back in.",             btn: 'BACK IN'          },
+  { emoji: '🪖',  title: 'SUIT UP',           msg: "Rest is over. Reload and get back out there.",      btn: 'RELOADED'         },
+  { emoji: '💣',  title: 'MOVE OUT',          msg: "No time to sit. The mission continues.",            btn: 'MOVING OUT'       },
+  { emoji: '🔫',  title: 'LOCKED AND LOADED', msg: "You're armed and ready. Get back in the fight.",   btn: 'LOCKED IN'        },
+  { emoji: '🪃',  title: 'COME BACK HARDER',  msg: "Every time you return, you hit harder.",            btn: 'HIT HARDER'       },
+  { emoji: '🏴',  title: 'HOLD THE LINE',     msg: "Don't give an inch. Get back in there.",            btn: 'HOLDING IT'       },
+  { emoji: '🛡️',  title: 'BACK ON THE FIELD', msg: "You rested. Now defend your progress.",             btn: 'DEFEND IT'        },
+  { emoji: '🎯',  title: 'AIM AND FIRE',      msg: "Target the next set. Don't miss.",                  btn: 'FIRE AWAY'        },
+  { emoji: '🚁',  title: 'DROP ZONE',         msg: "Dropping back in. No hesitation.",                  btn: 'DROPPING IN'      },
+  { emoji: '💥',  title: 'BREACH AND GO',     msg: "Break through the wall. Every set is a door.",      btn: 'BREACHING'        },
+  { emoji: '🔱',  title: 'BACK TO BATTLE',    msg: "Soldiers don't stay down. Neither do you.",         btn: 'BACK TO BATTLE'   },
+  { emoji: '🧨',  title: 'DETONATE',          msg: "Light the fuse. This set is the explosion.",        btn: 'LIGHT IT UP'      },
+  { emoji: '🪖',  title: 'RALLY UP',          msg: "Your squad doesn't wait. Get back in formation.",   btn: 'RALLY UP'         },
+  { emoji: '⚡',  title: 'CHARGE',            msg: "Full charge. No holding back this time.",           btn: 'CHARGING IN'      },
+  { emoji: '🔥',  title: 'BACK IN THE FIRE',  msg: "Rest is the pause. The fire is where you belong.",  btn: 'INTO THE FIRE'    },
+  { emoji: '🗡️',  title: 'DRAW YOUR SWORD',   msg: "Pick it back up. The fight isn't over.",            btn: 'SWORD DRAWN'      },
+  { emoji: '🏹',  title: 'RELEASE',           msg: "You pulled back. Now let it fly.",                  btn: 'RELEASING'        },
+  { emoji: '🚀',  title: 'LAUNCH',            msg: "Countdown done. Time to launch back in.",           btn: 'LAUNCHING'        },
+  { emoji: '👊',  title: 'STEP BACK IN',      msg: "The ring is right there. Get back in it.",          btn: 'STEPPING IN'      },
+  { emoji: '🫀',  title: 'FEEL IT',           msg: "That heartbeat is your war drum. Follow it.",       btn: 'FOLLOWING IT'     },
+  { emoji: '🦅',  title: 'DIVE BACK IN',      msg: "Soar up then dive. That's how you get stronger.",   btn: 'DIVING IN'        },
+  { emoji: '🌪️',  title: 'RE-ENTER',          msg: "Step back into the storm. You thrive in it.",       btn: 'INTO THE STORM'   },
+  { emoji: '🧱',  title: 'BREAK THE WALL',    msg: "The next set is a wall. Run through it.",           btn: 'BREAKING THROUGH' },
+  { emoji: '🔔',  title: 'ROUND BELL',        msg: "Bell rings. You answer. That simple.",              btn: 'ANSWERING'        },
+  { emoji: '😤',  title: 'BREATHE AND ATTACK',msg: "One deep breath. Then you go.",                     btn: 'ATTACKING'        },
+];
+
+let restAlertAudioCtx = null;
+let restAlertInterval = null;
+
+let restMessageQueue = [];
+
+function getNextRestMessage() {
+  if (restMessageQueue.length === 0) {
+    // Refill and shuffle all 25
+    restMessageQueue = REST_MESSAGES.map(function(_, i) { return i; });
+    for (var i = restMessageQueue.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = restMessageQueue[i];
+      restMessageQueue[i] = restMessageQueue[j];
+      restMessageQueue[j] = tmp;
+    }
+  }
+  return REST_MESSAGES[restMessageQueue.pop()];
+}
+
 function playRestDoneBeep() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const times = [0, 0.18, 0.36];
-    times.forEach(t => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = 880;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(0, ctx.currentTime + t);
-      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + t + 0.02);
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + t + 0.15);
-      osc.start(ctx.currentTime + t);
-      osc.stop(ctx.currentTime + t + 0.15);
-    });
-  } catch(e) {}
+  const pick = getNextRestMessage();
+
+  document.getElementById('restAlertEmoji').textContent = pick.emoji;
+  document.getElementById('restAlertTitle').textContent = pick.title;
+  document.getElementById('restAlertTitle').style.color = 'var(--accent)';
+  document.getElementById('restAlertMsg').textContent = pick.msg;
+  document.getElementById('restAlertTierDots').textContent = '';
+
+  var btn = document.querySelector('.rest-alert-btn');
+  btn.textContent = pick.btn;
+  btn.style.background = 'var(--accent)';
+  btn.style.boxShadow = '0 0 30px rgba(232,255,71,0.3)';
+
+  document.getElementById('restAlertOverlay').classList.add('open');
+  startRestAlertSound();
+}
+
+function startRestAlertSound() {
+  stopRestAlertSound();
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const times = [0, 0.2, 0.4];
+      times.forEach(function(t) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0, ctx.currentTime + t);
+        gain.gain.linearRampToValueAtTime(0.45, ctx.currentTime + t + 0.02);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + t + 0.18);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.18);
+      });
+    } catch(e) {}
+  }
+  beep();
+  restAlertInterval = setInterval(beep, 2500);
+}
+
+function stopRestAlertSound() {
+  if (restAlertInterval) { clearInterval(restAlertInterval); restAlertInterval = null; }
+}
+
+function dismissRestAlert() {
+  stopRestAlertSound();
+  document.getElementById('restAlertOverlay').classList.remove('open');
 }
 
 function restOptLabel(s) {
@@ -2420,6 +2765,16 @@ function restOptOnclick(s) {
 function setRestLabelText(s) {
   if (s === 'custom' || typeof s !== 'number') return '';
   return restOptLabel(s);
+}
+
+// Helper — returns display string for reps or time
+function setRepLabel(s) {
+  if (s.mode === 'time') {
+    const m = s.timeMin || '0';
+    const sec = s.timeSec || '0';
+    return m + 'm ' + sec + 's';
+  }
+  return s.reps ? s.reps + ' reps' : '— reps';
 }
 
 function renderSessionPage() {
@@ -2475,7 +2830,7 @@ function renderSessionPage() {
                  : s.type==='dumbbell' ? (s.kg||0)+'kg Dumbbells'
                  : s.type==='combo' ? (s.vestKg||0)+'kg Vest + '+(s.dbKg||0)+'kg Dumbbells = '+((parseFloat(s.vestKg)||0)+(parseFloat(s.dbKg)||0))+'kg'
                  : 'Bodyweight';
-        return '<div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted);padding:3px 0">SET '+(si+1)+' · '+(s.reps||'—')+' REPS · '+tl+'</div>';
+        return '<div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted);padding:3px 0">SET '+(si+1)+' · '+setRepLabel(s)+' · '+tl+'</div>';
       }).join('');
       return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px">'
         + '<div style="font-weight:600;font-size:13px;margin-bottom:6px">'+ex.name+'</div>'
@@ -2518,7 +2873,7 @@ function renderSessionPage() {
     if (nextSetIdx >= 0) {
       const s = sets[nextSetIdx];
       const tl = s.type==='vest'?(s.kg||0)+'kg Vest':s.type==='dumbbell'?(s.kg||0)+'kg Dumbbells':s.type==='combo'?(s.vestKg||0)+'kg Vest + '+(s.dbKg||0)+'kg Dumbbells':' Bodyweight';
-      nextInfo = 'SET '+(nextSetIdx+1)+' · '+(s.reps||'—')+' REPS · '+tl;
+      nextInfo = 'SET '+(nextSetIdx+1)+' · '+setRepLabel(s)+' · '+tl;
     }
   }
 
@@ -2550,11 +2905,30 @@ function renderSessionPage() {
       const setRows = sets.map(function(s, si) {
         const done = !!session.setsDone[ei+'-'+si];
         const tl = s.type==='vest'?(s.kg||0)+'kg Vest':s.type==='dumbbell'?(s.kg||0)+'kg Dumbbells':s.type==='combo'?(s.vestKg||0)+'kg Vest + '+(s.dbKg||0)+'kg Dumbbells = '+((parseFloat(s.vestKg)||0)+(parseFloat(s.dbKg)||0))+'kg':' Bodyweight';
-        const repsLabel = s.reps ? '<span>'+s.reps+' reps</span>' : '<span>— reps</span>';
+        const repsLabel = '<span>'+setRepLabel(s)+'</span>';
+        const isTimedSet = s.mode === 'time';
+        const activeTimerKey = ei + '-' + si;
+        const isTimerRunning = session.activeSetTimer && session.activeSetTimer.key === activeTimerKey;
+        const timerDisplay = isTimerRunning
+          ? '<div id="setTimerDisplay" style="font-family:\'Bebas Neue\',sans-serif;font-size:22px;color:#b47fff;letter-spacing:2px;min-width:52px;text-align:center">'
+            + (session.activeSetTimer.phase === 'prep' ? '<span style="color:var(--accent)">'+session.activeSetTimer.remaining+'</span>' : session.activeSetTimer.remaining)
+            + '</div>'
+          : '';
+        let actionBtn = '';
+        if (done) {
+          actionBtn = '<button class="live-done-btn set-done">✓</button>';
+        } else if (isTimedSet && !isTimerRunning) {
+          actionBtn = '<button class="live-done-btn" style="border-color:#b47fff;color:#b47fff" onclick="startSetTimer('+ei+','+si+')">▶ START</button>';
+        } else if (isTimedSet && isTimerRunning) {
+          actionBtn = '<button class="live-done-btn" style="border-color:var(--red);color:var(--red)" onclick="cancelSetTimer()">■ STOP</button>';
+        } else {
+          actionBtn = '<button class="live-done-btn" onclick="markSetDone('+ei+','+si+')">DONE</button>';
+        }
         return '<div class="live-set-row">'
           + '<div class="live-set-num">'+(si+1)+'</div>'
           + '<div class="live-set-info">'+repsLabel+' · '+tl+'</div>'
-          + '<button class="live-done-btn '+(done?'set-done':'')+'" onclick="markSetDone('+ei+','+si+')">'+(done?'✓':'DONE')+'</button>'
+          + timerDisplay
+          + actionBtn
           + '</div>';
       }).join('');
       setsBody = '<div class="live-sets-body">'+setRows+'</div>';
@@ -2724,11 +3098,13 @@ function markSetDone(ei, si) {
   if (allDone) {
     clearInterval(session.elapsedTimer);
     clearInterval(session.restTimer);
+    if (session.activeSetTimer) { clearInterval(session.activeSetTimer.interval); session.activeSetTimer = null; }
     session.restRemaining = 0;
     session.active = false;
     session.complete = true;
     const elapsed = Math.floor((Date.now()-session.startTs)/1000);
     saveSessionHistory(exercises, elapsed);
+    playVictorySound();
     renderSessionPage();
     return;
   }
@@ -2784,10 +3160,10 @@ function skipRest() {
 function endSession() {
   clearInterval(session.elapsedTimer);
   clearInterval(session.restTimer);
+  if (session.activeSetTimer) { clearInterval(session.activeSetTimer.interval); session.activeSetTimer = null; }
   const dayData = getDayData();
   const exercises = dayData.exercises || [];
   const elapsed = session.startTs ? Math.floor((Date.now()-session.startTs)/1000) : 0;
-  // Only save if at least one set was done
   if (Object.keys(session.setsDone).length > 0) saveSessionHistory(exercises, elapsed);
   session.active = false;
   session.complete = true;
@@ -2798,7 +3174,7 @@ function resetSession() {
   clearInterval(session.elapsedTimer);
   clearInterval(session.restTimer);
   const prev = session.restDuration;
-  session = { active:false, startTs:null, elapsedTimer:null, restTimer:null, restDuration:prev, restRemaining:0, pendingRestDuration:null, setsDone:{}, complete:false, customRestInput:false, workoutNameAtStart:'' };
+  session = { active:false, startTs:null, elapsedTimer:null, restTimer:null, restDuration:prev, restRemaining:0, pendingRestDuration:null, setsDone:{}, complete:false, customRestInput:false, workoutNameAtStart:'', activeSetTimer:null };
   renderSessionPage();
 }
 
@@ -2860,6 +3236,15 @@ function switchPage(name, btn) {
 // ─── START ────────────────────────────────────────────────────────────────────
 init();
 </script>
+<!-- Rest Done Alert -->
+<div class="rest-alert-overlay" id="restAlertOverlay">
+  <div class="rest-alert-emoji" id="restAlertEmoji">💪</div>
+  <div class="rest-alert-title" id="restAlertTitle">REST DONE</div>
+  <div class="rest-alert-msg" id="restAlertMsg">Time to get back to it!</div>
+  <div id="restAlertTierDots" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:24px"></div>
+  <button class="rest-alert-btn" onclick="dismissRestAlert()"></button>
+</div>
+
 <!-- Confirm Delete Modal -->
 <div class="confirm-modal-overlay" id="confirmModal">
   <div class="confirm-modal">
