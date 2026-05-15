@@ -1974,11 +1974,19 @@ const DEFAULT_TEMPLATES = [
   }
 ];
 
-// Seed localStorage with defaults if no templates saved yet
-let savedTemplates = JSON.parse(localStorage.getItem('forge_templates') || 'null');
-if (!savedTemplates) {
+// Seed localStorage with defaults — version key forces update when defaults change
+const TEMPLATE_VERSION = '2';
+let savedTemplates;
+if (localStorage.getItem('forge_template_version') !== TEMPLATE_VERSION) {
   savedTemplates = DEFAULT_TEMPLATES;
   localStorage.setItem('forge_templates', JSON.stringify(savedTemplates));
+  localStorage.setItem('forge_template_version', TEMPLATE_VERSION);
+} else {
+  savedTemplates = JSON.parse(localStorage.getItem('forge_templates') || '[]');
+  if (!savedTemplates || savedTemplates.length === 0) {
+    savedTemplates = DEFAULT_TEMPLATES;
+    localStorage.setItem('forge_templates', JSON.stringify(savedTemplates));
+  }
 }
 // Each template: { name, exercises: [{name, sets:[{reps,type,kg,vestKg,dbKg}]}] }
 
