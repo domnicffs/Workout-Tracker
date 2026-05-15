@@ -1615,12 +1615,12 @@ function init() {
 }
 
 function getWeekKey() {
-  // Use current week's Monday as key
   const now = new Date();
   const dayOfWeek = (now.getDay() + 6) % 7;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - dayOfWeek);
-  return monday.toISOString().slice(0,10);
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+  const mm = String(monday.getMonth() + 1).padStart(2, '0');
+  const dd = String(monday.getDate()).padStart(2, '0');
+  return monday.getFullYear() + '-' + mm + '-' + dd;
 }
 
 function getDayData() {
@@ -1887,9 +1887,10 @@ function updateExtraWeight(ei, val) {}
 function getPrevWeekDayData(dayIndex) {
   const now = new Date();
   const dayOfWeek = (now.getDay() + 6) % 7;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - dayOfWeek - 7); // go back 7 more days
-  const prevWkKey = monday.toISOString().slice(0, 10);
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek - 7);
+  const mm = String(monday.getMonth() + 1).padStart(2, '0');
+  const dd = String(monday.getDate()).padStart(2, '0');
+  const prevWkKey = monday.getFullYear() + '-' + mm + '-' + dd;
   return (data[prevWkKey] && data[prevWkKey][dayIndex]) || null;
 }
 
@@ -2378,12 +2379,14 @@ function loadTemplateIntoPastDay(tplIdx) {
   if (!tpl) return;
 
   const day = window._detailDay;
-  // Find which week key this day belongs to
   const targetDate = new Date(currentYear, currentMonth, day);
   const dow = (targetDate.getDay() + 6) % 7; // 0=Mon
-  const monday = new Date(targetDate);
-  monday.setDate(targetDate.getDate() - dow);
-  const wkKey = monday.toISOString().slice(0, 10);
+
+  // Build Monday date without UTC shift
+  const monday = new Date(currentYear, currentMonth, day - dow);
+  const mm = String(monday.getMonth() + 1).padStart(2, '0');
+  const dd = String(monday.getDate()).padStart(2, '0');
+  const wkKey = monday.getFullYear() + '-' + mm + '-' + dd;
 
   if (!data[wkKey]) data[wkKey] = {};
   if (!data[wkKey][dow]) data[wkKey][dow] = {};
@@ -2394,14 +2397,13 @@ function loadTemplateIntoPastDay(tplIdx) {
       name: ex.name,
       _open: i === 0,
       sets: (ex.sets || []).map(function(s) {
-        return { reps: s.reps, type: s.type || 'bw', kg: s.kg || '', vestKg: s.vestKg || '', dbKg: s.dbKg || '' };
+        return { reps: s.reps, mode: s.mode || 'reps', timeMin: s.timeMin || '', timeSec: s.timeSec || '', type: s.type || 'bw', kg: s.kg || '', vestKg: s.vestKg || '', dbKg: s.dbKg || '' };
       })
     };
   });
   data[wkKey][dow].isRest = false;
   save();
 
-  // Refresh the progress view
   selectedCalDay = day;
   renderProgress();
 }
